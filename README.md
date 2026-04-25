@@ -214,6 +214,33 @@ Nível de chunk: **L0** (ementa) · **L1** (artigo/seção) · **L2** (parágraf
 
 ---
 
+## Segurança — Fechar porta 6333 após indexação
+
+Durante a indexação via Colab (Etapa 4), a porta 6333 do Qdrant precisa estar aberta no firewall do GCP. **Após concluir o upsert, feche a regra imediatamente** para evitar que o banco fique exposto publicamente.
+
+> O Qdrant local não tem autenticação configurada (`QDRANT_APIKEY` vazio). A porta só deve ficar aberta pelo tempo estritamente necessário para a indexação.
+
+**Opção A — Pelo console do GCP (sem instalar nada):**
+
+1. Acesse [VPC Network → Firewall](https://console.cloud.google.com/networking/firewalls/list) no Google Cloud Console
+2. Localize a regra que libera a porta 6333 (ex: `allow-qdrant-6333`)
+3. Marque a caixa ao lado da regra e clique em **Excluir**
+
+**Opção B — Pelo terminal (via SSH na VM ou gcloud local):**
+
+```bash
+# Verificar regras de firewall existentes
+gcloud compute firewall-rules list --filter="name~qdrant"
+
+# Deletar a regra que abre a porta 6333
+gcloud compute firewall-rules delete allow-qdrant-6333
+
+# Confirmar que o Qdrant ainda funciona internamente (sem expor ao exterior)
+curl http://localhost:6333/healthz
+```
+
+---
+
 ## Comandos Úteis
 
 ```bash
