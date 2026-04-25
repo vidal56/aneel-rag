@@ -1,34 +1,18 @@
-# =============================================================================
-# ANEEL RAG — Docker Compose
-# Serviços: qdrant · gaia (vLLM) · embedding (BGE-M3) · adk
-# GPU: NVIDIA L4 24GB VRAM
-#   - gaia:      70% = ~16.8GB  (GPU_MEMORY_UTILIZATION=0.70)
-#   - embedding: ~25% = ~6GB    (BGE-M3 fp16 ~2.2GB + reranker ~600MB + overhead)
-#   - livre:     ~5%  = ~1.2GB  (headroom)
-# =============================================================================
-
 services:
 
-  # ── Qdrant (banco vetorial local) ─────────────────────────────
   qdrant:
     image: qdrant/qdrant:v1.9.2
     container_name: aneel_qdrant
     ports:
-      - "6333:6333"   # REST API
-      - "6334:6334"   # gRPC
+      - "6333:6333"
+      - "6334:6334"
     volumes:
       - qdrant_data:/qdrant/storage
     environment:
       - QDRANT__SERVICE__HTTP_PORT=6333
       - QDRANT__SERVICE__GRPC_PORT=6334
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
 
-  # ── GAIA 4B via vLLM (70% VRAM = ~16.8GB) ────────────────────
   gaia:
     build:
       context: .
@@ -37,13 +21,13 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - models:/models          # modelo persiste entre restarts
+      - models:/models
     env_file:
       - .env
     environment:
       - GPU_MEMORY_UTILIZATION=0.70
       - MAX_MODEL_LEN=8192
-      - DTYPE=bfloat16          # L4 (Ada Lovelace) suporta bfloat16 nativamente
+      - DTYPE=bfloat16
       - MODEL_PATH=/models/gaia-4b
       - HOST=0.0.0.0
       - PORT=8080
@@ -55,14 +39,7 @@ services:
               count: 1
               capabilities: [gpu]
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 120s       # modelo leva tempo pra carregar
 
-  # ── Embedding (BGE-M3 + reranker, ~25% VRAM = ~6GB) ──────────
   embedding:
     build:
       context: .
@@ -71,7 +48,7 @@ services:
     ports:
       - "8082:8082"
     volumes:
-      - hf_cache:/root/.cache/huggingface   # modelos HF cacheados
+      - hf_cache:/root/.cache/huggingface
     environment:
       - BGE_MODEL_PATH=BAAI/bge-m3
       - PORT=8082
@@ -83,14 +60,7 @@ services:
               count: 1
               capabilities: [gpu]
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
-      interval: 20s
-      timeout: 5s
-      retries: 10
-      start_period: 90s        # download BGE-M3 na primeira vez
 
-  # ── ADK Agent (sem GPU) ───────────────────────────────────────
   adk:
     build:
       context: .
@@ -103,18 +73,11 @@ services:
     environment:
       - EMBEDDING_URL=http://embedding:8082
       - QDRANT_URL=http://qdrant:6333
-      - QDRANT_APIKEY=                      # vazio = sem auth (instância local)
+      - QDRANT_APIKEY=
       - GAIA_API_URL=http://gaia:8080/v1
-    depends_on:
-      qdrant:
-        condition: service_healthy
-      gaia:
-        condition: service_healthy
-      embedding:
-        condition: service_healthy
     restart: unless-stopped
 
 volumes:
-  qdrant_data:    # dados Qdrant persistentes
-  models:         # modelos vLLM (GAIA-4B ~8GB)
-  hf_cache:       # cache HuggingFace (BGE-M3 + reranker)
+  qdrant_data:
+  models:
+  hf_cache:

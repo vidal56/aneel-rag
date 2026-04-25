@@ -16,15 +16,15 @@ RUN pip install --no-cache-dir \
     openai \
     "qdrant-client>=1.9.0" \
     requests \
-    python-dotenv
+    python-dotenv \
+    deprecated
 
 WORKDIR /app
 
-# Scripts do agente
 COPY scripts/agent.py .
 COPY scripts/rag_tools.py .
 COPY scripts/migrate_qdrant.py .
 
 EXPOSE 8081
 
-CMD ["adk", "web", "--host", "0.0.0.0", "--port", "8081"]
+CMD ["adk", "web", "--port", "8081"]

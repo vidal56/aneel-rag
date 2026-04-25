@@ -59,6 +59,8 @@ cmd = [
     "--dtype",                   DTYPE,
     "--trust-remote-code",
     "--enable-prefix-caching",
+    "--enforce-eager",
+    "--limit-mm-per-prompt", '{"image": 0}',   # desabilita encoder de imagem
 ]
 
 if QUANT and QUANT.lower() != "none":
