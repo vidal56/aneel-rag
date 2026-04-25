@@ -61,6 +61,8 @@ cmd = [
     "--enable-prefix-caching",
     "--enforce-eager",
     "--limit-mm-per-prompt", '{"image": 0}',   # desabilita encoder de imagem
+    "--enable-auto-tool-choice",
+    "--tool-call-parser",        "llama3_json",
 ]
 
 if QUANT and QUANT.lower() != "none":

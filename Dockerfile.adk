@@ -21,9 +21,11 @@ RUN pip install --no-cache-dir \
 
 WORKDIR /app
 
-COPY scripts/agent.py .
-COPY scripts/rag_tools.py .
-COPY scripts/migrate_qdrant.py .
+RUN mkdir -p aneel_rag
+COPY scripts/agent.py aneel_rag/
+COPY scripts/rag_tools.py aneel_rag/
+COPY scripts/migrate_qdrant.py aneel_rag/
+RUN echo "from . import agent" > aneel_rag/__init__.py
 
 EXPOSE 8081
 

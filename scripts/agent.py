@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
 
-from rag_tools import (
+from .rag_tools import (
     buscar_legislacao_aneel,
     buscar_por_artigo,
     resumir_documento,
