@@ -1,0 +1,32 @@
+# =============================================================================
+# Dockerfile.embedding — FastAPI servindo BGE-M3 + BGE-reranker-v2-m3
+# GPU: NVIDIA L4 · fp16 · ~25% VRAM (~6GB)
+# =============================================================================
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-pip curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# PyTorch com suporte CUDA 12.1, depois FlagEmbedding
+RUN pip3 install --no-cache-dir \
+    torch==2.2.2 --index-url https://download.pytorch.org/whl/cu121
+
+RUN pip3 install --no-cache-dir \
+    fastapi \
+    "uvicorn[standard]" \
+    "FlagEmbedding>=1.2.5" \
+    onnxruntime-gpu \
+    python-dotenv
+
+WORKDIR /app
+COPY scripts/embedding_server.py .
+
+ENV BGE_MODEL_PATH=BAAI/bge-m3 \
+    PORT=8082
+
+EXPOSE 8082
+
+CMD ["python3", "-m", "uvicorn", "embedding_server:app", "--host", "0.0.0.0", "--port", "8082"]
