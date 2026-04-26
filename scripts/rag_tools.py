@@ -75,8 +75,10 @@ def _build_filter(ano=None, nivel=None, is_active=None, autor=None, assunto=None
             conditions.append(FieldCondition(key="ano", match=MatchAny(any=anos)))
     if nivel:
         n = nivel.upper()
-        if n in NIVEIS_VALIDOS or n == "METADATA":
+        if n in NIVEIS_VALIDOS:
             conditions.append(FieldCondition(key="nivel", match=MatchValue(value=n)))
+        elif nivel.lower() == "metadata":
+            conditions.append(FieldCondition(key="nivel", match=MatchValue(value="metadata")))
     if is_active is not None:
         conditions.append(FieldCondition(key="is_active", match=MatchValue(value=is_active)))
     if autor:

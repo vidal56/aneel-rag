@@ -30,9 +30,15 @@ _gaia = LiteLlm(
     api_key="not-needed",
 )
 
+_sabia = LiteLlm(
+    model="openai/sabia-3",
+    api_base="https://chat.maritaca.ai/api",
+    api_key="117065665490833863840_5994a36fb7c69ae2",
+)
+
 root_agent = Agent(
     name="aneel_rag",
-    model=_gaia,
+    model=_sabia,
     description=(
         "Agente RAG para legislação ANEEL usando GAIA 4B local. "
         "Busca documentos no Qdrant e responde em português."
