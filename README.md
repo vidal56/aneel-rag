@@ -258,7 +258,7 @@ O agente ADK expõe 4 ferramentas RAG especializadas:
 **Exemplos de uso no chat:**
 
 ```
-"Quais são os regulamentos para hifrelétricas?"
+"Quais são os regulamentos para hidrelétricas?"
 "Me mostre o artigo 5 da resolução normativa de 2022."
 "Resuma o documento ANEEL-RN-1896-2022."
 "Quais tipos de atos normativos existem no banco?"
