@@ -1,5 +1,5 @@
 """
-rag_tools.py — 4 ferramentas ADK para busca no corpus ANEEL RAG
+rag_tools.py — 6 ferramentas ADK para busca no corpus ANEEL RAG
 
 Stack:
   - BGE-M3 (ONNX fp16) via embedding_server HTTP — dense + sparse
@@ -66,17 +66,25 @@ def _rerank(query: str, passages: list[str]) -> list[float]:
 
 # ── Filtro Qdrant ─────────────────────────────────────────────────────────────
 
-def _build_filter(ano: Optional[str], nivel: Optional[str]):
+def _build_filter(ano=None, nivel=None, is_active=None, autor=None, assunto=None, tipo_documento=None):
     from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny
     conditions = []
     if ano:
         anos = [a.strip() for a in ano.split(",") if a.strip() in ANOS_VALIDOS]
         if anos:
             conditions.append(FieldCondition(key="ano", match=MatchAny(any=anos)))
-    if nivel and nivel.upper() in NIVEIS_VALIDOS:
-        conditions.append(
-            FieldCondition(key="nivel", match=MatchValue(value=nivel.upper()))
-        )
+    if nivel:
+        n = nivel.upper()
+        if n in NIVEIS_VALIDOS or n == "METADATA":
+            conditions.append(FieldCondition(key="nivel", match=MatchValue(value=n)))
+    if is_active is not None:
+        conditions.append(FieldCondition(key="is_active", match=MatchValue(value=is_active)))
+    if autor:
+        conditions.append(FieldCondition(key="autor", match=MatchValue(value=autor)))
+    if assunto:
+        conditions.append(FieldCondition(key="assunto", match=MatchValue(value=assunto)))
+    if tipo_documento:
+        conditions.append(FieldCondition(key="tipo_documento", match=MatchValue(value=tipo_documento)))
     return Filter(must=conditions) if conditions else None
 
 
@@ -291,4 +299,104 @@ def listar_tipos_documentos(ano: Optional[str] = None) -> str:
     for chave, qtd in sorted(contagem.items(), key=lambda x: -x[1]):
         linhas.append(f"  {chave}: {qtd} chunks")
     linhas.append(f"\nTotal amostrado: {amostras} chunks de 281.003")
+    return "\n".join(linhas)
+
+
+# ── Ferramenta 5 ──────────────────────────────────────────────────────────────
+
+def buscar_documentos_revogados(
+    ano: Optional[str] = None,
+    tipo_documento: Optional[str] = None,
+) -> str:
+    """
+    Busca documentos revogados/inativos no corpus ANEEL RAG.
+
+    Args:
+        ano:             Filtro por ano: "2016", "2021" ou "2022".
+        tipo_documento:  Tipo do ato (ex: "resolução", "portaria").
+
+    Returns:
+        Lista de documentos revogados com metadados.
+    """
+    client = _get_qdrant()
+    filt = _build_filter(
+        ano=ano,
+        nivel="metadata",
+        is_active=False,
+        tipo_documento=tipo_documento,
+    )
+    results, _ = client.scroll(
+        collection_name=COLLECTION,
+        scroll_filter=filt,
+        limit=10,
+        with_payload=True,
+    )
+    if not results:
+        return "Nenhum documento revogado encontrado."
+    linhas = [f"Documentos revogados em {ano or 'todos os anos'} ({len(results)} encontrados):\n"]
+    for p in results:
+        payload = p.payload or {}
+        conteudo = payload.get("conteudo", "")
+        if conteudo:
+            linhas.append(f"- {conteudo}")
+        else:
+            linhas.append(
+                f"- {payload.get('doc_id', '?')} | "
+                f"Situação: {payload.get('situacao', '?')} | "
+                f"Publicação: {payload.get('publicacao', '?')}"
+            )
+    return "\n".join(linhas)
+
+
+# ── Ferramenta 6 ──────────────────────────────────────────────────────────────
+
+def buscar_por_metadados(
+    autor: Optional[str] = None,
+    assunto: Optional[str] = None,
+    tipo_documento: Optional[str] = None,
+    ano: Optional[str] = None,
+    is_active: Optional[bool] = None,
+) -> str:
+    """
+    Busca documentos no corpus ANEEL por metadados estruturados.
+
+    Args:
+        autor:           Nome do autor ou órgão emissor.
+        assunto:         Assunto ou tema do documento.
+        tipo_documento:  Tipo do ato (ex: "resolução normativa", "portaria").
+        ano:             Filtro por ano: "2016", "2021" ou "2022".
+        is_active:       True = vigentes, False = revogados/inativos.
+
+    Returns:
+        Lista de documentos correspondentes com metadados.
+    """
+    client = _get_qdrant()
+    filt = _build_filter(
+        ano=ano,
+        nivel="metadata",
+        is_active=is_active,
+        autor=autor,
+        assunto=assunto,
+        tipo_documento=tipo_documento,
+    )
+    results, _ = client.scroll(
+        collection_name=COLLECTION,
+        scroll_filter=filt,
+        limit=10,
+        with_payload=True,
+    )
+    if not results:
+        return "Nenhum documento encontrado com os filtros informados."
+
+    linhas = [f"{len(results)} documento(s) encontrado(s):\n"]
+    for p in results:
+        payload = p.payload or {}
+        linhas.append(
+            f"- {payload.get('doc_id', '?')} | "
+            f"Ano: {payload.get('ano', '?')} | "
+            f"Tipo: {payload.get('tipo_documento', '?')} | "
+            f"Autor: {payload.get('autor', '?')} | "
+            f"Ativo: {payload.get('is_active', '?')} | "
+            f"Assunto: {payload.get('assunto', '?')}"
+        )
     return "\n".join(linhas)
