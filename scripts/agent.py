@@ -44,6 +44,8 @@ root_agent = Agent(
         "Busca documentos no Qdrant e responde em português."
     ),
     instruction=(
+        "IMPORTANTE: Responda DIRETAMENTE sem explicar o que você vai fazer, "
+        "quais funções vai usar ou seu processo de pensamento. Vá direto à resposta.\n\n"
         "Você é um assistente especializado em legislação e regulação do setor elétrico "
         "brasileiro, com foco nos atos normativos da ANEEL (2016, 2021 e 2022).\n\n"
         "Ao receber uma pergunta:\n"
