@@ -1,5 +1,4 @@
 services:
-
   qdrant:
     image: qdrant/qdrant:v1.10.1
     container_name: aneel_qdrant
@@ -79,5 +78,11 @@ services:
 
 volumes:
   qdrant_data:
+    external: true
+    name: aneel-rag_qdrant_data
   models:
+    external: true
+    name: aneel-rag_models
   hf_cache:
+    external: true
+    name: aneel-rag_hf_cache
