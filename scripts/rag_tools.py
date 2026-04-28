@@ -69,26 +69,31 @@ def _rerank(query: str, passages: list[str]) -> list[float]:
 def _build_filter(ano=None, nivel=None, is_active=None, autor=None, assunto=None, tipo_documento=None):
     from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny
     conditions = []
+    
+    # Filtro de ano mais flexível
     if ano:
-        anos = [a.strip() for a in ano.split(",") if a.strip() in ANOS_VALIDOS]
+        # Se vier como string ou lista, tentamos extrair os anos
+        anos = [a.strip() for a in str(ano).split(",") if a.strip()]
         if anos:
             conditions.append(FieldCondition(key="ano", match=MatchAny(any=anos)))
+            
     if nivel:
         n = nivel.upper()
         if n in NIVEIS_VALIDOS:
             conditions.append(FieldCondition(key="nivel", match=MatchValue(value=n)))
-        elif nivel.lower() == "metadata":
-            conditions.append(FieldCondition(key="nivel", match=MatchValue(value="metadata")))
+            
     if is_active is not None:
         conditions.append(FieldCondition(key="is_active", match=MatchValue(value=is_active)))
+    
+    # Filtros de texto (autor, assunto, tipo)
     if autor:
         conditions.append(FieldCondition(key="autor", match=MatchValue(value=autor)))
     if assunto:
         conditions.append(FieldCondition(key="assunto", match=MatchValue(value=assunto)))
     if tipo_documento:
         conditions.append(FieldCondition(key="tipo_documento", match=MatchValue(value=tipo_documento)))
+        
     return Filter(must=conditions) if conditions else None
-
 
 # ── Busca híbrida ─────────────────────────────────────────────────────────────
 
@@ -131,21 +136,22 @@ def _hybrid_search(query: str, filt, top_rrf: int = 50, top_k: int = 10) -> list
     ranked = sorted(zip(scores, results), key=lambda x: x[0], reverse=True)
     return [p for _, p in ranked[:top_k]]
 
-
 def _format_chunks(pontos: list, max_chunks: int = 10) -> str:
     linhas = []
     for i, p in enumerate(pontos[:max_chunks], 1):
         payload = p.payload or {}
+        # MUDANÇA CRUCIAL: Trocar 'text' por 'conteudo'
+        texto_real = payload.get('conteudo', '') 
+        
         linhas.append(
             f"[DOCUMENTO {i}]\n"
             f"Fonte: {payload.get('doc_id', '?')} | "
             f"Ano: {payload.get('ano', '?')} | "
             f"Nível: {payload.get('nivel', '?')} | "
             f"Score: {p.score:.4f}\n"
-            f"{payload.get('text', '')}"
+            f"{texto_real}" # Aqui o texto finalmente vai aparecer para o Agente
         )
     return "\n\n".join(linhas)
-
 
 # ── Ferramenta 1 ──────────────────────────────────────────────────────────────
 
@@ -232,6 +238,7 @@ def resumir_documento(doc_id: str) -> str:
     if not results:
         return f"Documento '{doc_id}' não encontrado na coleção."
 
+    # Ordenação por nível (Ementa L0 -> Artigos L1 -> Parágrafos L2)
     nivel_ordem = {"L0": 0, "L1": 1, "L2": 2}
     results.sort(key=lambda p: nivel_ordem.get(p.payload.get("nivel", "L2"), 2))
 
@@ -243,12 +250,13 @@ def resumir_documento(doc_id: str) -> str:
         f"Total de chunks: {len(results)}\n"
         f"{'=' * 60}\n\n"
     )
+
+    # CORREÇÃO: Alterado de .get('text') para .get('conteudo') para bater com o Payload do Qdrant
     corpo = "\n\n".join(
-        f"[{p.payload.get('nivel', '?')}] {p.payload.get('text', '')}"
+        f"[{p.payload.get('nivel', '?')}] {p.payload.get('conteudo', '')}" 
         for p in results
     )
     return cabecalho + corpo
-
 
 # ── Ferramenta 4 ──────────────────────────────────────────────────────────────
 
@@ -375,7 +383,7 @@ def buscar_por_metadados(
     client = _get_qdrant()
     filt = _build_filter(
         ano=ano,
-        nivel="metadata",
+        nivel=None,  # MUITO IMPORTANTE: Deixe None aqui para busca ampla
         is_active=is_active,
         autor=autor,
         assunto=assunto,

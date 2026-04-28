@@ -29,11 +29,10 @@ _gaia = LiteLlm(
     api_base=GAIA_API_URL,
     api_key="not-needed",
 )
-
 _sabia = LiteLlm(
     model="openai/sabia-3",
-    api_base="https://chat.maritaca.ai/api",
-    api_key="117065665490833863840_5994a36fb7c69ae2",
+    api_base="https://chat.maritaca.ai/api/v1",  # Adicionado o /v1 aqui
+    api_key=os.getenv("MARITACA_API_KEY"),
 )
 
 root_agent = Agent(
