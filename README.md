@@ -1,4 +1,4 @@
-# ANEEL RAG — Desafio Agentes NLP 2025
+# ANEEL RAG — Desafio Agentes NLP 2026
 
 > Sistema de Recuperação e Geração Aumentada (RAG) sobre o corpus normativo da ANEEL (2016, 2021 e 2022), com busca híbrida densa+esparsa, reranker e geração via modelo GAIA 4B rodando localmente em GPU.
 
